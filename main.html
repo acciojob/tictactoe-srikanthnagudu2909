@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Tic Tac Toe</title>
     <style>
@@ -12,6 +11,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            text-align: center;
         }
 
         .hide {
@@ -21,233 +25,146 @@
         .game-board {
             height: 400px;
             width: 400px;
-            border: 1px solid black;
+            border: 2px solid black;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr)
+            grid-template-rows: repeat(3, 1fr);
+            margin: 20px auto;
         }
 
-        .box {
+        .cell {
             border: 1px solid black;
-            background-color: rgb(230, 175, 184);
-
-            font-size: xx-large;
+            background-color: #ffb6c1;
+            font-size: 2.5rem;
             text-align: center;
-            align-content: center;
-            transition: background 1s ease 2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #f8a5c2;
+        }
+
+        .message {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 10px;
         }
     </style>
 </head>
-
 <body>
-    <form id="player-form" class="">
-        <label for="player-1">Player 1 </label>
-        <input type="text" id="player-1">
-        <label for="player-2">Player 2 </label>
-        <input type="text" id="player-2">
-        <input type="submit" value="submit">
-    </form>
+    <div class="container">
+        <!-- Player input form -->
+        <form id="player-form">
+            <label for="player-1">Player 1:</label>
+            <input type="text" id="player-1" placeholder="Enter name"><br><br>
+            <label for="player-2">Player 2:</label>
+            <input type="text" id="player-2" placeholder="Enter name"><br><br>
+            <button id="submit" type="submit">Submit</button>
+        </form>
 
-    <div class="hide" id="game-area">
-        <h1 id="player-turn-info"></h1>
-        <div class="game-board hide" id="game-board">
+        <!-- Game area -->
+        <div id="game-area" class="hide">
+            <h1>Tic Tac Toe</h1>
+            <div class="message"></div>
+            <div class="game-board" id="board"></div>
         </div>
     </div>
 
     <script>
-        let isPlayerOneTurn = true
-        const playerTurnInfo = document.getElementById("player-turn-info")
-        const form = document.getElementById("player-form")
-        const gameBoard = document.getElementById("game-board")
-        const gameArea = document.getElementById("game-area")
+        const form = document.getElementById("player-form");
+        const gameArea = document.getElementById("game-area");
+        const board = document.getElementById("board");
+        const messageDiv = document.querySelector(".message");
 
-        const playerOneSelections = []
-        const playerTwoSelections = []
+        let player1 = "";
+        let player2 = "";
+        let currentPlayer = "";
+        let gameActive = true;
+        let boardState = ["", "", "", "", "", "", "", "", ""];
 
-        const winningCombinations = [
-            // Row
-            ['R1-C1', 'R1-C2', 'R1-C3'],// ['R1-C1','R2-C2','R2-C3','R1-C2']
-            ['R2-C1', 'R2-C2', 'R2-C3'],
-            ['R3-C1', 'R3-C2', 'R3-C3'],
-            // Column
-            ['R1-C1', 'R2-C1', 'R3-C1'],
-            ['R1-C2', 'R2-C2', 'R3-C2'],
-            ['R1-C3', 'R2-C3', 'R3-C3'],
-            // Diagonal
-            ['R1-C1', 'R2-C2', 'R3-C3'],
-            ['R1-C3', 'R2-C2', 'R3-C1']
+        // Winning combinations
+        const winningCombos = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6]
+        ];
 
-        ]
+        // Form submission
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            player1 = document.getElementById("player-1").value.trim();
+            player2 = document.getElementById("player-2").value.trim();
 
-        form.addEventListener("submit", storePlayerDetails)
+            if (!player1 || !player2) {
+                alert("Please enter both player names!");
+                return;
+            }
 
+            form.classList.add("hide");
+            gameArea.classList.remove("hide");
 
-        // Create Row and Column boxes in grid
+            currentPlayer = player1;
+            messageDiv.textContent = `${currentPlayer}, you're up!`;
 
-        function createBoxes(id, i) {
-            const box = document.createElement("div")
-            box.classList.add("box")
-            box.id = id
-            box.addEventListener("click", plyaerTurn)
+            createBoard();
+        });
 
-
-            // Scratch boxes if won
-            // if(i<=3){
-            //     const line = document.createElement("div")
-            //     line.style.height = '2px'
-            //     line.style.width = "100%"
-            //     line.style.backgroundColor = "black"
-
-            //     box.appendChild(line)
-            // }
-
-
-            // box.id = id
-            gameBoard.appendChild(box)
+        // Create board
+        function createBoard() {
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.id = i + 1;
+                cell.addEventListener("click", handleClick);
+                board.appendChild(cell);
+            }
         }
 
+        // Handle click
+        function handleClick(e) {
+            const index = e.target.id - 1;
 
-        let row = 1;
-        let column = 1;
+            if (!gameActive || boardState[index]) return;
 
-        for (let i = 1; i <= 9; i++) {
-            const id = `R${row}-C${column}`
+            boardState[index] = currentPlayer === player1 ? "X" : "O";
+            e.target.textContent = boardState[index];
 
-            if (i % 3 === 0) {
-                row++
-                column = 0
+            if (checkWinner()) {
+                messageDiv.textContent = `${currentPlayer}, congratulations you won! 🎉`;
+                gameActive = false;
+                return;
             }
 
+            if (boardState.every(cell => cell)) {
+                messageDiv.textContent = "It's a draw!";
+                gameActive = false;
+                return;
+            }
 
-            createBoxes(id, i)
-            column++
+            currentPlayer = currentPlayer === player1 ? player2 : player1;
+            messageDiv.textContent = `${currentPlayer}, you're up!`;
         }
 
-
-
-        // Player turn
-        function plyaerTurn(e) {
-            console.log("plyaer clicked the box", e.target.id)
-
-            e.target.style.backgroundColor = `rgb(238, 199, 300)`
-
-            // If box already clicked then do nothing/return
-            if (e.target.innerText) return
-
-
-
-            if (isPlayerOneTurn) {
-                e.target.innerText = "X"
-                isPlayerOneTurn = false
-                playerTurnInfo.innerText = `Its ${localStorage.getItem("player2")}'s turn!!!`
-                playerOneSelections.push(e.target.id)
-            } else {
-                e.target.innerText = "O"
-                isPlayerOneTurn = true
-                playerTurnInfo.innerText = `Its ${localStorage.getItem("player1")}'s turn!!!`
-                playerTwoSelections.push(e.target.id)
-
-            }
-
-            if (playerOneSelections.length >= 3 || playerTwoSelections.length >= 3) {
-                findWinner()
-            }
-
-            console.log(playerOneSelections, playerTwoSelections)
-        }
-
-
-        // Identify the winner
-        function findWinner() {
-
-            console.log("trying to find winner")
-
-            // let winner = ""
-
-            // Find if player 1 is winner
-            if (playerOneSelections.length >= 3) {
-                for (let combo of winningCombinations) {
-
-                    let count = 0
-                    // combo is ['R1-C1','R1-C2','R1-C3']
-                    for (let i = 0; i < combo.length; i++) {
-                        // combo[i] // R1-C1
-
-                        if (playerOneSelections.includes(combo[i])) {
-                            count++
-                        }
-
-
-                    }
-
-                    if (count === 3) {
-                        console.log(combo, 'combination for boxes')
-
-                        playerTurnInfo.innerText = `${localStorage.getItem("player1")} is winner!!!!!`
-
-                        return
-                    }
-
-                }
-
-            }
-
-            // Find if player 2 is winner
-            if (playerTwoSelections.length >= 3) {
-                for (let combo of winningCombinations) {
-
-                    let count = 0
-                    // combo is ['R1-C1','R1-C2','R1-C3']
-                    for (let i = 0; i < combo.length; i++) {
-                        // combo[i] // R1-C1
-
-                        if (playerTwoSelections.includes(combo[i])) {
-                            count++
-                        }
-
-
-                    }
-
-                    if (count === 3) {
-                        console.log(combo, 'combination for boxes')
-
-                        playerTurnInfo.innerText = `${localStorage.getItem("player2")} is winner!!!!!`
-
-                        return
-                    }
-
-                }
-
-            }
-
-
-        }
-
-
-        // Store player details in local storage
-        function storePlayerDetails(e) {
-            e.preventDefault()
-            const form = e.target
-            const player1 = form[0].value;
-            const player2 = form[1].value;
-
-            localStorage.setItem("player1", player1)
-            localStorage.setItem("player2", player2)
-
-
-            form.classList.toggle("hide")
-            gameArea.classList.toggle("hide")
-
-            playerTurnInfo.innerText = `Its ${player1}'s turn!!!`
-
-            console.log(e, form, player1, 'event in form')
-
-
-
-
-
+        // Check winner
+        function checkWinner() {
+            return winningCombos.some(combo => {
+                const [a, b, c] = combo;
+                return (
+                    boardState[a] &&
+                    boardState[a] === boardState[b] &&
+                    boardState[a] === boardState[c]
+                );
+            });
         }
     </script>
 </body>
-
 </html>
